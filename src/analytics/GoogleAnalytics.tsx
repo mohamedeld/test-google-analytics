@@ -18,8 +18,21 @@ interface GoogleAnalyticsProps {
   };
 }
 
+interface GADebugEventDetail {
+  type: "init" | "page_view" | "event";
+  name?: string;
+  payload: Record<string, unknown>;
+  at: string;
+}
+
 class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
   static initialized = false;
+
+  private publishDebugEvent(detail: GADebugEventDetail): void {
+    window.dispatchEvent(
+      new CustomEvent<GADebugEventDetail>("ga-debug-event", { detail }),
+    );
+  }
 
   constructor(props: GoogleAnalyticsProps) {
     super(props);
@@ -73,6 +86,11 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
     });
 
     console.info("[GA] Initialized", { measurementId });
+    this.publishDebugEvent({
+      type: "init",
+      payload: { measurementId },
+      at: new Date().toISOString(),
+    });
 
     GoogleAnalytics.initialized = true;
   }
@@ -87,6 +105,11 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
     };
 
     console.info("[GA] page_view", payload);
+    this.publishDebugEvent({
+      type: "page_view",
+      payload,
+      at: new Date().toISOString(),
+    });
     window.gtag("event", "page_view", payload);
   }
 
@@ -96,6 +119,16 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
     if (typeof window.gtag !== "function") return;
     const payload = { ...params, debug_mode: true };
     console.info(`[GA] ${action}`, payload);
+    window.dispatchEvent(
+      new CustomEvent<GADebugEventDetail>("ga-debug-event", {
+        detail: {
+          type: "event",
+          name: action,
+          payload,
+          at: new Date().toISOString(),
+        },
+      }),
+    );
     window.gtag("event", action, payload);
   }
 

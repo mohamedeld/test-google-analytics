@@ -2,6 +2,7 @@ import { Link, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { Button } from "./Button";
 import GoogleAnalyticsWrapper from "./analytics/GoogleAnalyticsWrapper";
+import GADebugPanel from "./analytics/GADebugPanel";
 
 function HomePage() {
   return (
@@ -39,6 +40,7 @@ function App() {
         <Link to="/about">About</Link>
       </nav>
       <GoogleAnalyticsWrapper />
+      {import.meta.env.DEV ? <GADebugPanel /> : null}
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />

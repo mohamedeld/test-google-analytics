@@ -6,6 +6,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: ["game-affair-drizzly.ngrok-free.dev"],
+    allowedHosts: ["https://test-google-analytics-seven.vercel.app/"],
   },
 });
