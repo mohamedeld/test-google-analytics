@@ -76,7 +76,7 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
     window.gtag("js", new Date());
     window.gtag("config", measurementId, {
       send_page_view: false,
-      debug_mode: true,
+      cookie_domain: "none",
     }); // manual page_view tracking
 
     script.addEventListener("error", () => {
