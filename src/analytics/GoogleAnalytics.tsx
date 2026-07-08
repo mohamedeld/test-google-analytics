@@ -87,6 +87,12 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
     if (GoogleAnalytics.pendingEvents.length > 0) {
       for (const pending of GoogleAnalytics.pendingEvents) {
         const payload = { ...pending.params, debug_mode: true };
+        this.publishDebugEvent({
+          type: "event",
+          name: pending.action,
+          payload: { ...payload, _ga_status: "flushed" },
+          at: new Date().toISOString(),
+        });
         window.gtag("event", pending.action, payload);
       }
       GoogleAnalytics.pendingEvents = [];
@@ -137,17 +143,34 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
         action,
         params,
       });
+      window.dispatchEvent(
+        new CustomEvent<GADebugEventDetail>("ga-debug-event", {
+          detail: {
+            type: "event",
+            name: action,
+            payload: { ...params, _ga_status: "queued" },
+            at: new Date().toISOString(),
+          },
+        }),
+      );
       GoogleAnalytics.pendingEvents.push({ action, params });
       return;
     }
-    const payload = { ...params, debug_mode: true };
+    const payload = {
+      ...params,
+      debug_mode: true,
+      transport_type: "beacon",
+      event_callback: () => {
+        console.info(`[GA] ${action} sent`);
+      },
+    };
     console.info(`[GA] ${action}`, payload);
     window.dispatchEvent(
       new CustomEvent<GADebugEventDetail>("ga-debug-event", {
         detail: {
           type: "event",
           name: action,
-          payload,
+          payload: { ...params, debug_mode: true, _ga_status: "sent" },
           at: new Date().toISOString(),
         },
       }),
