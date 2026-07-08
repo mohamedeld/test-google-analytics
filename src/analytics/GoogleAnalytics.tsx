@@ -4,8 +4,8 @@ import React from "react";
 // Extend the Window interface so TypeScript knows about gtag/dataLayer
 declare global {
   interface Window {
-    dataLayer: any[];
-    gtag: (...args: any[]) => void;
+    dataLayer: unknown[];
+    gtag: (...args: unknown[]) => void;
   }
 }
 
@@ -68,7 +68,7 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
     document.head.appendChild(script);
 
     window.dataLayer = window.dataLayer || [];
-    function gtag(...args: any[]) {
+    function gtag(...args: unknown[]) {
       window.dataLayer.push(args);
     }
     window.gtag = gtag;
@@ -76,7 +76,7 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
     window.gtag("js", new Date());
     window.gtag("config", measurementId, {
       send_page_view: false,
-      cookie_domain: "none",
+      cookie_domain: window.location.hostname,
     }); // manual page_view tracking
 
     script.addEventListener("error", () => {
@@ -115,7 +115,10 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
 
   // Static helper so you can fire custom events from anywhere:
   // GoogleAnalytics.trackEvent('button_click', { category: 'engagement', label: 'signup' });
-  static trackEvent(action: string, params: Record<string, any> = {}): void {
+  static trackEvent(
+    action: string,
+    params: Record<string, unknown> = {},
+  ): void {
     if (typeof window.gtag !== "function") return;
     const payload = { ...params, debug_mode: true };
     console.info(`[GA] ${action}`, payload);
