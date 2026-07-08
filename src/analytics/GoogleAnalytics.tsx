@@ -27,6 +27,10 @@ interface GADebugEventDetail {
 
 class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
   static initialized = false;
+  static pendingEvents: Array<{
+    action: string;
+    params: Record<string, unknown>;
+  }> = [];
 
   private publishDebugEvent(detail: GADebugEventDetail): void {
     window.dispatchEvent(
@@ -79,6 +83,15 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
       cookie_domain: window.location.hostname,
     }); // manual page_view tracking
 
+    // Flush any events captured before gtag was available.
+    if (GoogleAnalytics.pendingEvents.length > 0) {
+      for (const pending of GoogleAnalytics.pendingEvents) {
+        const payload = { ...pending.params, debug_mode: true };
+        window.gtag("event", pending.action, payload);
+      }
+      GoogleAnalytics.pendingEvents = [];
+    }
+
     script.addEventListener("error", () => {
       console.warn(
         "[GA] Failed to load gtag.js. Check ad blockers, CSP, or network settings.",
@@ -119,7 +132,14 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
     action: string,
     params: Record<string, unknown> = {},
   ): void {
-    if (typeof window.gtag !== "function") return;
+    if (typeof window.gtag !== "function") {
+      console.warn("[GA] gtag is not ready yet; queueing event", {
+        action,
+        params,
+      });
+      GoogleAnalytics.pendingEvents.push({ action, params });
+      return;
+    }
     const payload = { ...params, debug_mode: true };
     console.info(`[GA] ${action}`, payload);
     window.dispatchEvent(
