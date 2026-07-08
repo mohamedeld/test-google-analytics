@@ -3,7 +3,7 @@ import GoogleAnalytics from "./analytics/GoogleAnalytics";
 export const Button = () => {
   const handleClick = () => {
     console.log("click");
-    GoogleAnalytics.trackEvent("add_to_cart ", {
+    GoogleAnalytics.trackEvent("add_to_cart", {
       event_category: "engagement",
       event_label: "cta_hero",
     });
