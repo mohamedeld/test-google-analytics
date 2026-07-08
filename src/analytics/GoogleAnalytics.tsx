@@ -1,7 +1,6 @@
 // GoogleAnalytics.tsx
 import React from "react";
 
-// Extend the Window interface so TypeScript knows about gtag/dataLayer
 declare global {
   interface Window {
     dataLayer: unknown[];
@@ -23,6 +22,14 @@ interface GADebugEventDetail {
   name?: string;
   payload: Record<string, unknown>;
   at: string;
+}
+
+// Initialize gtag immediately
+if (typeof window !== "undefined") {
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function (...args: unknown[]) {
+    window.dataLayer.push(args);
+  };
 }
 
 class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
@@ -65,25 +72,28 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
   private initGA(measurementId: string): void {
     if (!measurementId || GoogleAnalytics.initialized) return;
 
-    // Inject the gtag.js script
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-    document.head.appendChild(script);
+    // Only inject the script if it hasn't been loaded
+    if (!document.querySelector(`script[src*="gtag/js?id=${measurementId}"]`)) {
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+      document.head.appendChild(script);
 
-    window.dataLayer = window.dataLayer || [];
-    function gtag(...args: unknown[]) {
-      window.dataLayer.push(args);
+      script.addEventListener("error", () => {
+        console.warn(
+          "[GA] Failed to load gtag.js. Check ad blockers, CSP, or network settings.",
+        );
+      });
     }
-    window.gtag = gtag;
 
+    // Configure gtag
     window.gtag("js", new Date());
     window.gtag("config", measurementId, {
       send_page_view: false,
       cookie_domain: window.location.hostname,
-    }); // manual page_view tracking
+    });
 
-    // Flush any events captured before gtag was available.
+    // Flush any events captured before gtag was available
     if (GoogleAnalytics.pendingEvents.length > 0) {
       for (const pending of GoogleAnalytics.pendingEvents) {
         const payload = { ...pending.params, debug_mode: true };
@@ -97,12 +107,6 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
       }
       GoogleAnalytics.pendingEvents = [];
     }
-
-    script.addEventListener("error", () => {
-      console.warn(
-        "[GA] Failed to load gtag.js. Check ad blockers, CSP, or network settings.",
-      );
-    });
 
     console.info("[GA] Initialized", { measurementId });
     this.publishDebugEvent({
@@ -132,14 +136,13 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
     window.gtag("event", "page_view", payload);
   }
 
-  // Static helper so you can fire custom events from anywhere:
-  // GoogleAnalytics.trackEvent('button_click', { category: 'engagement', label: 'signup' });
   static trackEvent(
     action: string,
     params: Record<string, unknown> = {},
   ): void {
-    if (typeof window.gtag !== "function") {
-      console.warn("[GA] gtag is not ready yet; queueing event", {
+    // Check if gtag is available (it should be now since we initialized it globally)
+    if (!window.gtag) {
+      console.warn("[GA] gtag not available; queueing event", {
         action,
         params,
       });
@@ -156,6 +159,7 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
       GoogleAnalytics.pendingEvents.push({ action, params });
       return;
     }
+
     const payload = {
       ...params,
       debug_mode: true,
@@ -164,6 +168,7 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
         console.info(`[GA] ${action} sent`);
       },
     };
+
     console.info(`[GA] ${action}`, payload);
     window.dispatchEvent(
       new CustomEvent<GADebugEventDetail>("ga-debug-event", {
@@ -175,6 +180,8 @@ class GoogleAnalytics extends React.Component<GoogleAnalyticsProps> {
         },
       }),
     );
+
+    // Use window.gtag directly
     window.gtag("event", action, payload);
   }
 
